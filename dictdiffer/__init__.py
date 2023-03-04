@@ -275,7 +275,7 @@ def diff(first, second, node=None, ignore=None, path_limit=None, expand=False,
     return _diff_recursive(first, second, node)
 
 
-def patch(diff_result, destination, in_place=False):
+def patch(diff_result, destination, in_place=False, remove=True, add=True, change=True):
     """Patch the diff result to the destination dictionary.
 
     :param diff_result: Changes returned by ``diff``.
@@ -285,11 +285,14 @@ def patch(diff_result, destination, in_place=False):
                      Setting ``in_place=True`` means that patch will apply
                      the changes directly to and return the destination
                      structure.
+    :param remove: do deletions, True by default
+    :param add: do additions, True by default
+    :param change: do changes, True by default
     """
     if not in_place:
         destination = deepcopy(destination)
 
-    def add(node, changes):
+    def add_patcher(node, changes):
         for key, value in changes:
             dest = dot_lookup(destination, node)
             if isinstance(dest, LIST_TYPES):
@@ -299,7 +302,7 @@ def patch(diff_result, destination, in_place=False):
             else:
                 dest[key] = value
 
-    def change(node, changes):
+    def change_patcher(node, changes):
         dest = dot_lookup(destination, node, parent=True)
         if isinstance(node, str):
             last_node = node.split('.')[-1]
@@ -310,7 +313,7 @@ def patch(diff_result, destination, in_place=False):
         _, value = changes
         dest[last_node] = value
 
-    def remove(node, changes):
+    def remove_patcher(node, changes):
         for key, value in changes:
             dest = dot_lookup(destination, node)
             if isinstance(dest, SET_TYPES):
@@ -318,10 +321,12 @@ def patch(diff_result, destination, in_place=False):
             else:
                 del dest[key]
 
+    def do_nothing(*args, **kwargs): pass
+
     patchers = {
-        REMOVE: remove,
-        ADD: add,
-        CHANGE: change
+        REMOVE: remove_patcher if remove else do_nothing,
+        ADD: add_patcher if add else do_nothing,
+        CHANGE: change_patcher if change else do_nothing
     }
 
     for action, node, changes in diff_result:
@@ -370,7 +375,7 @@ def swap(diff_result):
         yield swappers[action](node, change)
 
 
-def revert(diff_result, destination, in_place=False):
+def revert(diff_result, destination, in_place=False, remove=True, add=True, change=True):
     """Call swap function to revert patched dictionary object.
 
     Usage example:
@@ -388,5 +393,8 @@ def revert(diff_result, destination, in_place=False):
                      is returned. Setting ``in_place=True`` means
                      that revert will apply the changes directly to
                      and return the destination structure.
+    :param remove: do deletions, True by default
+    :param add: do additions, True by default
+    :param change: do changes, True by default
     """
-    return patch(swap(diff_result), destination, in_place)
+    return patch(swap(diff_result), destination, in_place, remove, add, change)

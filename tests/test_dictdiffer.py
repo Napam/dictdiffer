@@ -687,6 +687,33 @@ class DiffPatcherTests(unittest.TestCase):
         patched_in_place = patch(changes, first, in_place=True)
         assert first == patched_in_place
 
+    def test_remove_only(self):
+        first = {'a': 1, 'b': 2}
+        expected = {'a': 1}
+        assert expected == patch(
+            [('remove', '', [('b', 2)]),
+             ('add', '', [('c', 4)]),
+             ('change', 'a', (1, 2))],
+            first, change=False, add=False)
+
+    def test_add_only(self):
+        first = {'a': 1, 'b': 2}
+        expected = {'a': 1, 'b': 2, 'c': 4}
+        assert expected == patch(
+            [('remove', '', [('b', 2)]),
+             ('add', '', [('c', 4)]),
+             ('change', 'a', (1, 2))],
+            first, change=False, remove=False)
+
+    def test_change_only(self):
+        first = {'a': 1, 'b': 2}
+        expected = {'a': 2, 'b': 2}
+        assert expected == patch(
+            [('remove', '', [('b', 2)]),
+             ('add', '', [('c', 4)]),
+             ('change', 'a', (1, 2))],
+            first, add=False, remove=False)
+
 
 class SwapperTests(unittest.TestCase):
     def test_addition(self):
